@@ -1,3 +1,31 @@
 steps:
-- name: 'ubuntu'
-  args: ['echo', 'hello repos world']
+- # Build the renderer image
+  name: gcr.io/cloud-builders/docker:latest
+  args: ['build', '--tag=gcr.io/$PROJECT_ID/helloworld-$SHORT_SHA', '.']
+
+- # Push the container image to Container Registry
+  name: gcr.io/cloud-builders/docker
+  args: ['push', 'gcr.io/$PROJECT_ID/helloworld-$SHORT_SHA']
+
+- # Deploy to Cloud Run
+  name: gcr.io/cloud-builders/gcloud
+  args:
+  - run
+  - deploy
+  - helloworld-$SHORT_SHA
+  - --image=gcr.io/$PROJECT_ID/helloworld-$SHORT_SHA
+  - --region=us-west2
+  - --platform=managed
+  - --allow-unauthenticated
+  - --set-env-vars=NAME=Test
+
+images:
+  - 'gcr.io/$PROJECT_ID/helloworld-$SHORT_SHA'
+
+options:
+  pool:
+    name: 'projects/proctor-github-enterprise/locations/us-central1/workerPools/coolpool'
+  # Send logs only to Cloud Logging
+  logging: CLOUD_LOGGING_ONLY
+  # Use a regional, user-owned bucket for logs
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
